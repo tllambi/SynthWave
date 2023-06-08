@@ -1,0 +1,225 @@
+#Adaptando libreria:
+
+# VER # : esta etiqueta aparece en los lugares de este documento donde es necesario revisar algo.
+
+1- Buscar si alguien ya adapto o hizo alguna libreria similar 
+2- Analizar la libreria y entender bien sus clases, #defines y como hace el begin()
+3- En este caso hay muchas definiciones para distintos micros y segun que tipo de comunicacion usemos (I2C o SPI)
+4- Imprimi la hoja libreria en papel y empece a marcar solo codigo indispensable para inicializar el display
+5- Codigo:
+
+	a- Copie el template de .cpp de los examples del libro
+	b- Fui agregando los defines de Adafruit y las estructuras de display.h
+	c- Agregue los prototipos de funcion de display.h
+	d- Implemente displayInit() hasta el primer displayCodeWrite()
+	e- Con la hoja de datos checke como se hace la comunicacion I2C y compare con el codigo de adafruit:
+		
+		ssd1306_command1(uint8_t c) {
+		    wire->beginTransmission(i2caddr);
+		    WIRE_WRITE((uint8_t)0x00); // Co = 0, D/C = 0
+		    WIRE_WRITE(c);
+		    wire->endTransmission();
+		}
+
+		En la seccion "8.1.5.2 MCU I2C Interface" del datasheet del driver SSD1306 estan los pasos a seguir para realizar 
+		la comunicacion I2C. Nombres utiles:
+
+			(SA0) --> Slave Address bit 			// Es el bit menos significativo de la direccion de SLAVE, 
+										   			// esto permite a traves del pin fisico seleccionar entre 2 
+										   			// posibles direcciones de SLAVE. A fines del modulo en general
+										   			// esto viene preseteado segun la resolucion del display.
+
+			(“R/W#” bit)  --> Read/Write select bit // R/W# = 1 Read Mode
+													// R/W# = 0 Write Mode
+
+			(“D/C#” bit)  --> Data/Command Seccion bit 
+
+			(Co) --> Continuation bit
+
+			(SDA)  --> I2C-bus data signal			// Internamiente son dos buses SDAin SDAout unidos, SDAin funciona como SDA y siempre 
+													// debe estar conectado, SDAout puede estar desconectado y en ese caso se deben 
+													//ignoran los ACK.
+
+			 (SCL) --> I2C-bus clock signal  		// No encontre ninguna frecuencia recomendada en el datasheet. En Adafruit recomiendan 400kHz
+
+		Los pasos a seguir para realizar la comunicacion son:
+
+			1- El MASTER inicia la comunicacion de datos con la condicion de START. 
+					Condicion START:  SDA debe pasar de LOW a HIGH (flanco descendente) mientras 
+									  SCL esta en estado alto.
+
+			2- Luego de la condicion de START va la direccion de SLAVE. Para SSD1306 la direccion es "b0111100" o "b0111101" , en hexa 0x3C o 0x3D. 
+			   (En Adafruit.cpp encontre que en general 0x3C es para displays de 128x32 y 0x3D para 128x64).
+
+			3- Write Mode comienza al poner R/W# = 0
+
+			4- Se genera un ACK antes de recibir un byte de datos. El ACK se define SDA=0 durante un flanco ascendente de SCL. 
+
+			5- Despues de la trasmision de la direccion de SLAVE se puede enviar el byte de control o datos. El byte de control se conforma por 
+			   Co y D/C# seguido de sies 0.
+
+			   	Byte control [ Co|D/C#| 0 | 0 | 0 | 0 | 0 | 0 ]
+
+			   a- Co = 0 --> el paquete que se envia a continuacion contendra datos
+			   b- D/C# = 0  --> determina que el siguiente byte de dato actua como COMANDO.
+			      D/C# = 1  --> determina que el siguiente byte de dato actua como DATO y se almacena en GDDRAM.
+
+			6- Se genera un ACK luego de cada control byte o data byte.
+
+			7- El modo de lectura termina cuando se aplica la condicion de STOP. 
+					Condicion de STOP: SDAin de LOW a HIGH (flanco Ascendente) mientras
+									   SCL esta en estado alto.
+
+		En resumen en una transmision veo: 
+
+			START CONDITION + SLAVE ADDRESS + R/W# + ACK + [Co + D/C# + Control Byte + ACK + Data Byte + ACK] + [] + ... + [] + STOP CONDITION
+
+			Para resumir el resumen podemos decir que hay 2 tipos de paquetes en la trasmicion:
+				SLAVE ADDRESS: 	[011110XR]  X=0/1   R=R/W#
+				CONTROL BYTE:	[CD000000]  C=Co    D=D/C#
+				DATA BYTE:		[XXXXXXXX]  
+				ACK: 			[0] (En un flanco descendente de SCL)
+
+			Y el flujo de datos seria:
+
+			(Master) --> START CONDITION + SLAVE ADDRESS		 
+
+												ACK <-- (Slave)
+
+			(Master) --> CONTROL BYTE + DATA BYTE
+
+												ACK <-- (Slave)
+
+			(Master) --> CONTROL BYTE + DATA BYTE
+
+												ACK <-- (Slave)
+
+							(Continua...)
+
+
+			(Master) --> CONTROL BYTE + DATA BYTE
+
+												ACK <-- (Slave)
+	       
+			(Master) --> STOP CONDITION
+
+
+	    Ahora que entendi la comunicacion puedo analizar el metodo:
+
+	    ssd1306_command1(uint8_t c) {
+		    wire->beginTransmission(i2caddr); 	// Inicia la transmision
+		    WIRE_WRITE((uint8_t)0x00); 			// Co = 0, D/C = 0 osea el siguiente paquete va a ser un comando
+		    WIRE_WRITE(c);						// c sea el byte del comando
+		    wire->endTransmission();			// Finaliza transmision
+		}
+
+	f- Analizo commandList()
+
+		ssd1306_commandList(const uint8_t *c, uint8_t n) {
+		    wire->beginTransmission(i2caddr);					// Inicia transmision
+		    WIRE_WRITE((uint8_t)0x00); 							// Co = 0, D/C = 0 osea el siguiente paquete va a ser un comando
+		    uint16_t bytesOut = 1;								// Inicializa un contador de paquetes enviados
+		    while (n--) {										// Envio los n paquetes de atras hacia adelante
+		      if (bytesOut >= WIRE_MAX) {						//		Si envie mas datos de los que admite el canal entonces reconecto
+		      	wire->endTransmission();						//      (dato: WIRE_MAX es el minino entre 255 y el valor dado por el 
+		        wire->beginTransmission(i2caddr);				//		micro, habria que buscar si hay data en mbed)
+		        WIRE_WRITE((uint8_t)0x00); 						// 		Co = 0, D/C = 0 osea el siguiente paquete va a ser un comando
+		        bytesOut = 1;									//		como reinicie reinicio el contador de paquetes enviados # VER # : REVISAR PORQUE HACE ESTO Y SI ES NECESARIO EN EL CORTEX-M7
+		      }
+		      WIRE_WRITE(pgm_read_byte(c++));					// Busco el dato en memoria de programa y luego incremento en 1 el puntero.
+		      bytesOut++;										// Incremento el contador de datos enviados.
+		    wire->endTransmission();							// Termino transmision
+		}
+
+	g- Analizo Begin():
+
+		bool Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, bool reset,
+                             bool periphBegin) {
+
+		  if ((!buffer) && !(buffer = (uint8_t *)malloc(WIDTH * ((HEIGHT + 7) / 8))))	// Creo un buffer si no existe
+		    return false;
+
+		  clearDisplay();																// Limpio el buffer que acabamos de crear
+
+		  vccstate = vcs;
+
+		  i2caddr = addr ? addr : ((HEIGHT == 32) ? 0x3C : 0x3D);						// Segun las dimensiones  del display asigna el SLAVE ADDRESS
+		  
+		  if (periphBegin)
+		    wire->begin();																// Inicia la comunicacion I2C # VER # : Hay que adaptar esto a mbed.h
+		
+		  
+
+		  // Reset SSD1306 if requested and reset pin specified in constructor			// Si el modulo tiene pin de reset resetea el modulo, no es mi caso posiblemente lo elimine
+		  if (reset && (rstPin >= 0)) {
+		    pinMode(rstPin, OUTPUT);
+		    digitalWrite(rstPin, HIGH);
+		    delay(1);                   // VDD goes high at start, pause for 1 ms
+		    digitalWrite(rstPin, LOW);  // Bring reset low
+		    delay(10);                  // Wait 10 ms
+		    digitalWrite(rstPin, HIGH); // Bring out of reset
+		  }
+
+		  TRANSACTION_START																// Macro que setea el SCL en la frecuencia correcta # VER # : Es necesario??
+
+		  // # VER # : Aca empieza a enviar comando en un orden diferente al de la hoja de datos, voy a implementarlo tal cual porque se que funciona pero luego deveria hacer una version
+		  //			respetando la hoja de datos.
+		  
+		  // Init sequence			
+		  static const uint8_t PROGMEM init1[] = {SSD1306_DISPLAYOFF,         // 0xAE	
+		                                          SSD1306_SETDISPLAYCLOCKDIV, // 0xD5
+		                                          0x80, // the suggested ratio 0x80
+		                                          SSD1306_SETMULTIPLEX}; // 0xA8
+		  ssd1306_commandList(init1, sizeof(init1));
+		  ssd1306_command1(HEIGHT - 1);
+
+		  static const uint8_t PROGMEM init2[] = {SSD1306_SETDISPLAYOFFSET, // 0xD3
+		                                          0x0,                      // no offset
+		                                          SSD1306_SETSTARTLINE | 0x0, // line #0
+		                                          SSD1306_CHARGEPUMP};        // 0x8D
+		  ssd1306_commandList(init2, sizeof(init2));
+
+		  ssd1306_command1((vccstate == SSD1306_EXTERNALVCC) ? 0x10 : 0x14);
+
+		  static const uint8_t PROGMEM init3[] = {SSD1306_MEMORYMODE, // 0x20
+		                                          0x00, // 0x0 act like ks0108
+		                                          SSD1306_SEGREMAP | 0x1,
+		                                          SSD1306_COMSCANDEC};
+		  ssd1306_commandList(init3, sizeof(init3));
+
+		  uint8_t comPins = 0x02;
+		  contrast = 0x8F;
+
+		  if ((WIDTH == 128) && (HEIGHT == 32)) {
+		    comPins = 0x02;
+		    contrast = 0x8F;
+		  } else if ((WIDTH == 128) && (HEIGHT == 64)) {
+		    comPins = 0x12;
+		    contrast = (vccstate == SSD1306_EXTERNALVCC) ? 0x9F : 0xCF;
+		  } else if ((WIDTH == 96) && (HEIGHT == 16)) {
+		    comPins = 0x2; // ada x12
+		    contrast = (vccstate == SSD1306_EXTERNALVCC) ? 0x10 : 0xAF;
+		  } else {
+		    // Other screen varieties -- TBD
+		  }
+
+		  ssd1306_command1(SSD1306_SETCOMPINS);
+		  ssd1306_command1(comPins);
+		  ssd1306_command1(SSD1306_SETCONTRAST);
+		  ssd1306_command1(contrast);
+
+		  ssd1306_command1(SSD1306_SETPRECHARGE); // 0xd9
+		  ssd1306_command1((vccstate == SSD1306_EXTERNALVCC) ? 0x22 : 0xF1);
+		  static const uint8_t PROGMEM init5[] = {
+		      SSD1306_SETVCOMDETECT, // 0xDB
+		      0x40,
+		      SSD1306_DISPLAYALLON_RESUME, // 0xA4
+		      SSD1306_NORMALDISPLAY,       // 0xA6
+		      SSD1306_DEACTIVATE_SCROLL,
+		      SSD1306_DISPLAYON}; // Main screen turn on
+		  ssd1306_commandList(init5, sizeof(init5));
+
+		  TRANSACTION_END
+
+		  return true; // Success
+		}
