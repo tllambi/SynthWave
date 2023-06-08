@@ -1,8 +1,8 @@
 #Adaptando libreria:
 
-# VER # : esta etiqueta aparece en los lugares de este documento donde es necesario revisar algo.
+# VER #  Esta etiqueta aparece en los lugares de este documento donde es necesario revisar algo.
 
-1- Buscar si alguien ya adapto o hizo alguna libreria similar 
+1- Buscar si alguien ya adapto o hizo alguna libreria similar (No hubo suerte)
 2- Analizar la libreria y entender bien sus clases, #defines y como hace el begin()
 3- En este caso hay muchas definiciones para distintos micros y segun que tipo de comunicacion usemos (I2C o SPI)
 4- Imprimi la hoja libreria en papel y empece a marcar solo codigo indispensable para inicializar el display
@@ -162,9 +162,9 @@
 
 		  TRANSACTION_START																// Macro que setea el SCL en la frecuencia correcta # VER # : Es necesario??
 
-		  // # VER # : Aca empieza a enviar comando en un orden diferente al de la hoja de datos, voy a implementarlo tal cual porque se que funciona pero luego deveria hacer una version
+		  // # VER # : Aca empieza a enviar comando en un orden diferente al de la hoja de datos, voy a implementarlo tal cual porque se que funciona pero luego deberia hacer una version
 		  //			respetando la hoja de datos.
-		  
+
 		  // Init sequence			
 		  static const uint8_t PROGMEM init1[] = {SSD1306_DISPLAYOFF,         // 0xAE	
 		                                          SSD1306_SETDISPLAYCLOCKDIV, // 0xD5
