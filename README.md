@@ -1,6 +1,6 @@
 # SynthWave
 
-Este proyecto es un sintetizador implementado en la placa de desarrollo NUCLEO-F429ZI, utilizando [lenguaje de programación] y [librería/framework utilizado].
+Este proyecto es un sintetizador implementado en la placa de desarrollo NUCLEO-F429ZI.
 
 <img src="images/GodSynth.png" width="20%">
 
@@ -16,14 +16,3 @@ El objetivo de este proyecto es desarrollar un sintetizador musical utilizando l
 
 - Placa de desarrollo NUCLEO-F429ZI
 - [Otros requisitos de hardware]
-
-## Requisitos del Software
-
-- [Lenguaje de programación] [versión]
-- [Librería/Framework] [versión]
-- [Otros requisitos de software]
-
-## Instalación y Configuración
-
-1. Clona o descarga este repositorio.
-
