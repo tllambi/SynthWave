@@ -2,6 +2,8 @@
 
 # VER #  Esta etiqueta aparece en los lugares de este documento donde es necesario revisar algo.
 
+//--- 7-6-2023 ---//
+
 1- Buscar si alguien ya adapto o hizo alguna libreria similar (No hubo suerte)
 2- Analizar la libreria y entender bien sus clases, #defines y como hace el begin()
 3- En este caso hay muchas definiciones para distintos micros y segun que tipo de comunicacion usemos (I2C o SPI)
@@ -223,3 +225,96 @@
 
 		  return true; // Success
 		}
+
+
+//--- 8-6-2023 ---//
+
+6- Hice el codigo como respetando el datasheet y respetando la libreria pero no funcionó :(. Verifique en el codigo que no faltara nada y no encontre nada.
+7- Con el tester medi respecto a tierra los 30 pines del display y descubri que ninguno llegaba a 7v o mas. 
+8- Conecte el display a otro micro (esp32) que tiene una libreria implementada y funcionando y encontre que hay pines con aprox 7v. Osea que o no estoy haciendo la secuencia de inicio bien o no esta funcionando la comunicacion I2C.
+9- Hice la siguiente prueba: 
+		-Conecte la tierra de la nucleo y el esp32 
+		-Conecte el esp32 a la pantalla y hice la secuencia de inicio 
+		-Sin apagar el display desconecte SDA y SCL y los conecte a la nucleo.
+		-Envie varios comando desde la nucleo sin efecto
+
+   Conclucion... Algo anda mal con la comunicacion.h
+
+//--- 10-6-2023 ---//
+
+10- Se me ocurrio usar un arduino para capturar los mensajes I2C, el resultado para el ESP32 fue este:
+
+
+		Mensaje 0: 	0x00
+		Mensaje 1:  0xAE
+		Mensaje 2:  0xD5
+		Mensaje 3:  0x80
+		Mensaje 4:  0xA8
+		Mensaje 5:  0x00
+		Mensaje 6:  0x3F
+		Mensaje 7:  0x00
+		Mensaje 8:  0xD3
+		Mensaje 9:  0x00
+		Mensaje 10: 0x40
+		Mensaje 11: 0x8D
+		Mensaje 12: 0x00
+		Mensaje 13: 0x20
+		Mensaje 14: 0x00
+		Mensaje 15: 0xA1
+		Mensaje 16: 0xC8
+		Mensaje 17: 0x00
+		Mensaje 18: 0x12
+		Mensaje 19: 0x00
+		Mensaje 20: 0xCF
+		Mensaje 21: 0x00
+		Mensaje 22: 0xD9
+		Mensaje 23: 0x00
+		Mensaje 24: 0xF1
+		Mensaje 25: 0x00
+		Mensaje 26: 0x22
+		Mensaje 27: 0x00
+		Mensaje 28: 0xFF
+		Mensaje 29: 0x21
+		Mensaje 30: 0x00
+ 		
+		En la nucleo no recibi nada... asique me puse a ver la documentacion de la nucleo y encontre algo que no habia tenido en cuenta, 
+		la direccion es de 7bits y se le agrega un cero para indicar que va a escribir. Encontre este codigo de prueba funciono :D 
+		
+			/*
+			 * Copyright (c) 2014-2020 Arm Limited and affiliates.
+			 * SPDX-License-Identifier: Apache-2.0
+			 */
+		
+			#include "mbed.h"
+		
+			// Read temperature from LM75BD
+		
+			I2C i2c(I2C_SDA, I2C_SCL);
+		
+			const int addr7bit = 0x3C;      // 7 bit I2C address
+			const int addr8bit = 0x3C << 1; // 8bit I2C address, 0x90
+		
+			int main()
+			{
+			    char cmd[2];
+			    while (1) {
+			        cmd[0] = 0x01;
+			        cmd[1] = 0x00;
+			        i2c.write(addr8bit, cmd, 2);
+		
+			        ThisThread::sleep_for(500);
+		
+			        cmd[0] = 0x00;
+			        i2c.write(addr8bit, cmd, 1);
+			        i2c.read(addr8bit, cmd, 2);
+		
+			        float tmp = (float((cmd[0] << 8) | cmd[1]) / 256.0);
+			        printf("Temp = %.2f\n", tmp);
+			    }
+			}
+11- Hago los arreglos necesarios a ver que pasa...
+12- Funciona!!!! Con la secuencia de prueba copiada de Adafruit funciona genial, con lo que hice siguiendo el datasheet no funciona. Tengo que 
+testear porque, por ahora voy a agregar todas las funciones de dibujo.
+
+//--- 11-6-2023 ---//
+13- Acondicione la funcion que imprime bitmaps pero aun no funciona
