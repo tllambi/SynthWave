@@ -32,7 +32,6 @@ public:
 protected:
   void displayCommand(char command);
   void displayCommandList(const char *command, uint8_t commandLen);
-  void sendDisplayBuffer();
 
   I2C *i2c;   
   char *buffer; 

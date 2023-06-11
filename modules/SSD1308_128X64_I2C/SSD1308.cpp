@@ -335,30 +335,10 @@ void SSD1306::display(void) {
     uint16_t count = WIDTH * ((HEIGHT + 7) / 8);
     char *ptr = this->buffer;
     char c = 0x40;
-    //i2c->write(this->address, &c, 1);
-    uint16_t bytesOut = 1;
+    i2c->write(this->address, &c, 1);
     while (count--) {
-        //i2c->write(this->address, &c, 1);    
         i2c->write(this->address, ptr++, 1);
-        bytesOut++;
-    }/*
-    displayCommand(SSD1306_SETLOWCOLUMN | 0x0);  // low col = 0
-	displayCommand(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
-	displayCommand(SSD1306_SETSTARTLINE | 0x0); // line #0
-	sendDisplayBuffer();*/
-}
-void SSD1306::sendDisplayBuffer(){
-	/*char buff[17];
-	buff[0] = 0x40; // Data Mode
-	// send display buffer in 16 byte chunks
-	for(uint16_t i=0, q=WIDTH * ((HEIGHT + 7) / 8); i<q; i+=16 ) 
-	{	uint8_t x ;
-		// TODO - this will segfault if buffer.size() % 16 != 0
-		for(x=1; x<sizeof(buff); x++) 
-			buff[x] = buffer[i+x-1];
-        
-		i2c->write(this->address, buff, sizeof(buff));
-	}*/
+    }
 }
 void SSD1306::drawBitmap(int16_t x, int16_t y, const char bitmap[], int16_t w, int16_t h, uint16_t color){
 
