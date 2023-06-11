@@ -90,6 +90,6 @@ int main()
         OLED.drawBitmap(0,0,bitmap_rata_synth,WIDTH, HEIGHT,1);
         OLED.display();
         wait_us(1000000);
-        ledVerde = !ledVerde;
+        ledAzul = !ledAzul;
     }
 }
