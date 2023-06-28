@@ -318,3 +318,20 @@ testear porque, por ahora voy a agregar todas las funciones de dibujo.
 
 //--- 11-6-2023 ---//
 13- Acondicione la funcion que imprime bitmaps pero aun no funciona
+
+//--- 26-6-2023 ---//
+14- Sigo con el problema de los bitmaps, con un Arduino "simule" un dispositivo con direccion 0x3C
+    y capture todos los paquetes que envia el ESP32 y luego hice una funcion "magicInit()" que reenvia 
+    esos paquetes.
+
+    La idea es que el esp32 hace una secuencia de inicio y imprime un bitmap. Por alguna razon que no 
+    termino de entender no funciona. 
+
+//--- 27-6-2023 ---//
+
+15- Hice un metodo para enviar comandos por terminal Serie. Comprobé que funcionan los comandos de
+    invertir colores, modo patalla en blanco, modo patalla normal y scroll de imagen derecho e 
+    izquierdo. La imagen esta conformada por ruido en la GDDRAM (Graphic Display Data RAM). 
+    Osea que la secuencia de inicio deberia esta bien, el problema esta en que no estoy cargando bien 
+    el bitmap en la GDDRAM.
+

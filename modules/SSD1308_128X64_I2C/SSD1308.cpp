@@ -77,14 +77,122 @@ static bool initial8BitCommunicationIsCompleted;
 SSD1306::SSD1306(uint8_t w, uint8_t h, I2C *i2c){
     this->i2c = i2c;
 }
+SSD1306::SSD1306(uint8_t w, uint8_t h, I2C *i2c, UnbufferedSerial *uartUsb){
+    this->i2c = i2c;
+    this->uartUsb = uartUsb;
+}
 
+void SSD1306::magicInit(displayConnection_t connection){
+    char magicString[] = {0x00,0xAE,0xD5,0x80,0xA8,0x00,0x3F,0x00,0xD3,0x00, 0x40, 0x8D, 0x00, 0x20, 0x00, 0xA1, 0xC8, 0x00, 0x12, 0x00, 0xCF, 0x00, 0xD9, 0x00, 0xF1, 0x00, 0x22, 0x00, 0xFF, 0x21, 0x00, 0x40, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x3F, 0x5F, 0xCF, 0xCF, 0xCF, 0xCF, 0x4F, 0xCF, 0x6F, 0xCF, 0xCF, 0x5F, 0x3F, 0x7F, 0x40, 0x0C, 0x94, 0x8D, 0xCF, 0xC2, 0xE7, 0xE1, 0xF1};
+    //char magicString2[] = {0x21,0x00,0x40,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x40,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+    char *magicChar = magicString;
+    //char *magicChar2 = magicString2;
+    int count = 72;
+    for(int i=0; i<count; i++)
+        i2c->write(this->address, magicChar++, 1);
+    //i2c->write(this->address, magicChar2++,count);
+}
+void SSD1306::serieI2CCom(){
+    char receivedChar = '\0';
+    if( this->uartUsb->readable() ) {
+        this->uartUsb->read( &receivedChar, 1);
+        this->uartUsb->write("\n0. Print anything \n", 20);
+        this->uartUsb->write("a. Print anything invert\n", 26);
+        this->uartUsb->write("1. Display On (A4)\n", 20);
+        this->uartUsb->write("2. Display On (A5)\n", 19);
+        this->uartUsb->write("3. Set Normal (A6)\n", 19);
+        this->uartUsb->write("4. Set Inverse (A7)\n", 20);
+        this->uartUsb->write("5. Scroll Right\n", 16);
+        this->uartUsb->write("6. Scroll Left\n", 15);
+        this->uartUsb->write("7. Scroll Up\n", 13);
+        this->uartUsb->write("8. Scroll Down\n", 15);
+        this->uartUsb->write("9. Scroll Stop\n", 15);
+        static const char testChar = 0xFF;
+        static const char controlByte = 0x40;
+
+        switch(receivedChar){
+            case '0':
+                static const char dlist1[] = {
+                    SSD1306_PAGEADDR,
+                    0,                      // Page start address
+                    0xFF,                   // Page end (not really, but works here)
+                    SSD1306_COLUMNADDR, 0}; // Column start address
+                this->displayCommandList(dlist1, sizeof(dlist1));
+                this->displayCommand(WIDTH - 1); // Column end address
+                i2c->write(this->address, &controlByte, 1);
+
+                for (uint16_t i=0; i<(WIDTH*HEIGHT/8); i++) {
+                    i2c->write(this->address, &testChar, 1);
+                    wait_us(100);
+                }
+            break;
+
+            case '1':
+                this->displayCommand(0xA4);
+            break;
+            case '2':
+                this->displayCommand(0xA5);
+            break;
+            case '3':
+                this->displayCommand(0xA6);
+            break;
+            case '4':
+                this->displayCommand(0xA7);
+            break;
+            case '5':                    
+                this->displayCommand(SSD1306_RIGHT_HORIZONTAL_SCROLL); //Commando de Right Horizontal scroll
+                this->displayCommand(0x00); //Dummy byte
+                this->displayCommand(0x00); //Defino la pagina
+                this->displayCommand(0x00);
+                this->displayCommand(0x0F); 
+                this->displayCommand(0x00);
+                this->displayCommand(0xFF);
+                this->displayCommand(0x2F);
+            break;
+            case '6':
+                this->displayCommand(SSD1306_LEFT_HORIZONTAL_SCROLL); //Commando de Left Horizontal scroll
+                this->displayCommand(0x00); //Dummy byte
+                this->displayCommand(0x00); //Defino la pagina
+                this->displayCommand(0x00);
+                this->displayCommand(0x0F); 
+                this->displayCommand(0x00);
+                this->displayCommand(0xFF);
+                this->displayCommand(0x2F);
+            break;
+            case '7':
+                this->displayCommand(SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL); //Commando de Up Horizontal scroll
+                this->displayCommand(0x00); //Dummy byte
+                this->displayCommand(0x00); //Defino la pagina
+                this->displayCommand(0x00);
+                this->displayCommand(0x0F); 
+                this->displayCommand(0x01);
+                this->displayCommand(0xFF);
+                this->displayCommand(0x2F);
+            break;
+            case '8':
+                this->displayCommand(SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL); //Commando de Up Horizontal scroll
+                this->displayCommand(0x00); //Dummy byte
+                this->displayCommand(0x00); //Defino la pagina
+                this->displayCommand(0x00);
+                this->displayCommand(0x0F); 
+                this->displayCommand(0x01);
+                this->displayCommand(0xFF);
+                this->displayCommand(0x2F);
+            break;
+            case '9':
+                this->displayCommand(SSD1306_DEACTIVATE_SCROLL);
+            break;
+        }
+        //i2c->write(this->address, &receivedChar, 1);
+    }
+}
 bool SSD1306::displayInit(displayConnection_t connection){
     this->connection = connection;
     if( this->connection == DISPLAY_CONNECTION_I2C_SSD1306_OLED) {
         this->address = SSD1306_I2C_BUS_8BIT_WRITE_ADDRESS << 1;
-        this->i2c->frequency(400000); //Tomi: fmin=400k por hoja de datos 
-        
+        this->i2c->frequency(100000); //Tomi: fmin=400k por hoja de datos     
     }
+
     initial8BitCommunicationIsCompleted = false;  
     //if ((!buffer) && !(buffer = (char *)malloc(WIDTH * ((HEIGHT + 7) / 8)))) // Tomi: WIDTH * ((HEIGHT + 7) / 8) es una matriz de WIDTH x HEIGHT
                                                                                 //       al sumar 7 si HEIGHT no es multiplo de 8 redondeamos para arriba.
@@ -218,7 +326,7 @@ bool SSD1306::displayInit(displayConnection_t connection){
     displayCommand(SSD1306_DISPLAYON);
   */
 
-  // Init sequence  
+    // Init sequence  
     // Init
     int _reset = 1;
     wait_us(10);
@@ -266,6 +374,8 @@ bool SSD1306::displayInit(displayConnection_t connection){
         SSD1306_DISPLAYON // Main screen turn on  
     };  
     displayCommandList(init5, sizeof(init5));
+    //displayCommand(SSD1306_DISPLAYOFF);
+    //displayCommand(SSD1306_DISPLAYALLON);
 
     return true; //Retorno que esta todo ok
 }
@@ -279,6 +389,23 @@ void SSD1306::clearDisplay(){
                                                    //       siguiendo esta logica)
 }
 
+void SSD1306::displayData(char data){
+    char controlByte = 0x40; // 0x40 = Indica que se enviara un dato. Más info leer datasheet ssd1306.
+    const char dataSSD1306 [] ={controlByte, data};
+    switch(this->connection) {
+        case DISPLAY_CONNECTION_I2C_SSD1306_OLED:
+            i2c->write(this->address, dataSSD1306, 2);
+            break;
+        case DISPLAY_CONNECTION_3WIRES_SPI_SSD1306_OLED:
+            break;
+        case DISPLAY_CONNECTION_4WIRES_SPI_SSD1306_OLED:
+            break;
+        case DISPLAY_CONNECTION_8BITS_SERIE_8080_SSD1306_OLED:
+            break;
+        case DISPLAY_CONNECTION_8BITS_SERIE_6800_SSD1306_OLED:
+            break;
+    }
+}
 void SSD1306::displayCommand(char command){
     char controlByte = 0x00; // 0x00 = Indica que se enviara un comando. Más info leer datasheet ssd1306.
     const char commandSSD1306 [] ={controlByte, command};
@@ -322,24 +449,32 @@ void SSD1306::displayCommandList(const char *command, uint8_t commandLen){
     }
 }
 
+
 void SSD1306::display(void) {
    static const char dlist1[] = {
       SSD1306_PAGEADDR,
       0,                      // Page start address
-      0xFF,                   // Page end (not really, but works here)
+      (HEIGHT / 8) - 1,                  
       SSD1306_COLUMNADDR, 0}; // Column start address
     displayCommandList(dlist1, sizeof(dlist1));
     displayCommand(WIDTH - 1); // Column end address
 
-
-    uint16_t count = WIDTH * ((HEIGHT + 7) / 8);
-    char *ptr = this->buffer;
     char c = 0x40;
-    i2c->write(this->address, &c, 1);
-    while (count--) {
-        i2c->write(this->address, ptr++, 1);
+    char *cptr = &c;
+    char *ptr = buffer;
+
+    for (uint16_t i=0; i<(WIDTH*HEIGHT/8); i++) {
+      // send a bunch of data in one xmission
+      i2c->write(this->address,cptr,1);
+
+      for (uint8_t x=0; x<16; x++) {
+        i2c->write(this->address,ptr,1);
+        ptr++;
+      }
+      i--;
     }
 }
+
 void SSD1306::drawBitmap(int16_t x, int16_t y, const char bitmap[], int16_t w, int16_t h, uint16_t color){
 
     int16_t byteWidth = (w + 7) / 8;    // Calcula el ancho en bytes de una línea del bitmap (se redondea hacia arriba 

@@ -19,10 +19,13 @@ typedef enum {
 class SSD1306{
 public:
   SSD1306(uint8_t w, uint8_t h, I2C *i2c);
+  SSD1306(uint8_t w, uint8_t h, I2C *i2c, UnbufferedSerial *uartUsb);
   // En el futuro se pueden agregar otros constructores para admitir SPI y Comunicacion Serie
   ~SSD1306(void);
 
   bool displayInit(displayConnection_t connection);
+  void magicInit(displayConnection_t connection);
+  void serieI2CCom();
   void clearDisplay();                                  // Limpia el buffer 
   void display(void);                                   // Envia al display lo que contiene el buffer
   void drawBitmap(int16_t x, int16_t y, const char bitmap[], int16_t w, int16_t h, uint16_t color);
@@ -32,8 +35,11 @@ public:
 protected:
   void displayCommand(char command);
   void displayCommandList(const char *command, uint8_t commandLen);
+  void displayData(char data);
 
   I2C *i2c;   
+  UnbufferedSerial *uartUsb;
+
   char *buffer; 
   int8_t i2caddr;  
   int address;

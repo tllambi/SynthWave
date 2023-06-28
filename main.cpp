@@ -13,7 +13,10 @@ DigitalOut ledRojo(LED3);
 #define I2C1_SCL PB_8
 
 I2C i2cSsd1306(I2C1_SDA, I2C1_SCL); 
-SSD1306 OLED(WIDTH, HEIGHT, &i2cSsd1306);
+UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
+SSD1306 OLED(WIDTH, HEIGHT, &i2cSsd1306, &uartUsb);
+
+
 // 'rata synth', 128x64px
 const char bitmap_rata_synth [] = {
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -222,6 +225,12 @@ int main()
     ledAzul =1;
     OLED.displayInit(DISPLAY_CONNECTION_I2C_SSD1306_OLED);
     while(1){
+        OLED.serieI2CCom(); //Es blockeante pero para probar esta bien
+    }
+    //OLED.magicInit(DISPLAY_CONNECTION_I2C_SSD1306_OLED);
+    //OLED.drawBitmap(0,0,epd_bitmap_negro,WIDTH, HEIGHT,1);
+    //OLED.display();
+  /*  while(1){
         OLED.drawBitmap(0,0,epd_bitmap_negro,WIDTH, HEIGHT,1);
         OLED.display();
         wait_us(1000000);
@@ -230,5 +239,5 @@ int main()
         OLED.display();
         wait_us(1000000);
         ledAzul = !ledAzul;
-    }
+    }*/
 }
