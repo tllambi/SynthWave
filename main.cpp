@@ -4,7 +4,7 @@
 
 DigitalOut ledVerde(LED1);
 DigitalOut ledAzul(LED2);
-DigitalOut ledRojo(LED3);
+//DigitalOut ledRojo(LED3);
 
 #define HEIGHT 64
 #define WIDTH  128
@@ -222,7 +222,7 @@ const char epd_bitmap_blanco [] = {
 
 int main()
 {
-    ledAzul =1;
+    ledVerde =1;
     OLED.displayInit(DISPLAY_CONNECTION_I2C_SSD1306_OLED);
     while(1){
         OLED.serieI2CCom(); //Es blockeante pero para probar esta bien

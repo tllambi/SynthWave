@@ -25,6 +25,7 @@ public:
 
   bool displayInit(displayConnection_t connection);
   void magicInit(displayConnection_t connection);
+  void magicInit();
   void serieI2CCom();
   void clearDisplay();                                  // Limpia el buffer 
   void display(void);                                   // Envia al display lo que contiene el buffer
@@ -44,8 +45,10 @@ protected:
   int8_t i2caddr;  
   int address;
 
-  displayConnection_t connection;
+  //Parametros de comendos
+  char contraste;
 
+  displayConnection_t connection;
 };
 //=====[Declarations (prototypes) of public functions]=========================
 

@@ -335,3 +335,31 @@ testear porque, por ahora voy a agregar todas las funciones de dibujo.
     Osea que la secuencia de inicio deberia esta bien, el problema esta en que no estoy cargando bien 
     el bitmap en la GDDRAM.
 
+//--- 29-6-2023 ---//
+ 
+16- Agregué otros comandos por terminal serie.
+
+//--- 1-7-2023 ---//
+
+17- Cambie el metodo displayCommandList(), antes enviaba 0x00 antes de cada byte en la lista que se le 
+    pasaba como parametro. Me di cuenta que quizas lo mas correcto es enviar solo un 0x00 y luego la lista
+    porque muchas veces es necesario enviar un comando y seguido a esto uno más valores. Si envio 0x00 entre
+    valores estaría diciendo que esos valores son comandos tambien. No observo cambios de todas formas
+
+//--- 2-7-2023 ---//
+
+18- No entiendo porque no puedo cargar los bits en la RAM, voy a escribir que formas tengo de enviar datos a la
+     RAM del display para aclarar ideas:
+
+    1- Seteo el modo de direccionamiento a la ram, tengo 3 modos:
+        a- Page addressing mode
+        b- Horizontal addressing mode
+        c- Vertical addressing mode
+
+        a- Page addressing mode:
+            -Después de leer/escribir la RAM el puntero columna aumenta automanticamente en 1.
+            -Una vez llega a la ultima columna, el puntero columna se reinicia pero el puntero pagina NO
+            -Hay que establecer las direcciones de la nueva página y columna para poder acceder al contenido RAM 
+                de la siguiente página.
+        b- Horizontal addressing mode:
+            
